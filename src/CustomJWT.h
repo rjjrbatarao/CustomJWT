@@ -3,8 +3,9 @@
 
 #define SHA256_HASH 32
 
-#include <Crypto.h>
-#include <SHA256.h>
+#ifdef ESP32
+#include "mbedtls/md.h"
+#endif
 #include "Base64URL.h"
 
 class CustomJWT
@@ -210,7 +211,17 @@ public:
     {
         uint8_t hashed[SHA256_HASH];
         memset(hashed, 0, SHA256_HASH);
-        hmac<SHA256>(hashed, SHA256_HASH, secret, secretLen, data, dataLen);
+        
+		mbedtls_md_context_t ctx;
+		mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
+
+		mbedtls_md_init(&ctx);
+		mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(md_type), 1);
+		mbedtls_md_hmac_starts(&ctx, (const unsigned char *) secret, secretLen);
+		mbedtls_md_hmac_update(&ctx, (const unsigned char *) data, dataLen);
+		mbedtls_md_hmac_finish(&ctx, hashed);
+		mbedtls_md_free(&ctx);
+		
         Base64URL::base64urlEncode(hashed, SHA256_HASH, output, outputLen);
     }
 
